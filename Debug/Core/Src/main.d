@@ -44,7 +44,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
- ../Core/Inc/lcd_hd44780_i2c.h ../Core/Inc/DS3231.h
+ ../Core/Inc/lcd_hd44780_i2c.h ../Core/Inc/DS3231.h ../Core/Inc/bmp280.h
 
 ../Core/Inc/main.h:
 
@@ -141,3 +141,5 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Core/Inc/lcd_hd44780_i2c.h:
 
 ../Core/Inc/DS3231.h:
+
+../Core/Inc/bmp280.h:
