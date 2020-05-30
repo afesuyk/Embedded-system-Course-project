@@ -61,18 +61,28 @@ osThreadId checkDataSensorHandle;
 osThreadId myBtnTaskHandle;
 osThreadId myPrintTimeHandle;
 /* USER CODE BEGIN PV */
-bool isPressed = false;
-uint8_t numTask = 0;
-char buffer[15];
-/* BME280 / BMP280 */
 BMP280_HandleTypedef bmp280;
+
 int fPart;
 int sPart;
-float pressure, temperature, humidity;
-uint16_t size;
+int fPartPressure;
+int fHumidity;
+int numTask = 0;
+float pressure;
+float temperature;
+float humidity;
+float MMPressure;
+char buffer[15];
+char firstPart[] = "";
+char secondPart[] = "";
+char PressureStr[] = "";
+char HumidityStr[] = "";
+bool isPressed = false;
+//uint8_t numTask = 0;
 uint8_t Data[256];
 uint8_t bmeStr[] = "BME280";
 uint8_t bmpStr[] = "BMP280";
+uint16_t size;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -419,6 +429,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : SensorBtn_Pin */
+  GPIO_InitStruct.Pin = SensorBtn_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(SensorBtn_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -476,7 +492,7 @@ void StartDefaultTask(void const * argument)
   for(;;)
   {
     HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-    vTaskDelay(1000);
+    osDelay(1000);
   }
 
   osThreadTerminate(NULL);
@@ -494,10 +510,11 @@ void StartLcdTask(void const * argument)
 {
   /* USER CODE BEGIN StartLcdTask */
 	lcdInit(&hi2c1, (uint8_t)0x27, (uint8_t)4, (uint8_t)20);
-	lcdDisplayClear();
 
 	for(;;)
 	{
+      lcdDisplayClear();
+
       lcdSetCursorPosition(0, 0);
 	  lcdPrintStr((uint8_t*)"Have a nice day!", 16);
 
@@ -505,7 +522,6 @@ void StartLcdTask(void const * argument)
 	  lcdPrintStr((uint8_t*)"Just a line...", 14);
 
 	  HAL_Delay(1000);
-	  lcdDisplayClear();
 
 	  vTaskDelay(100);
 	}
@@ -524,34 +540,15 @@ void StartLcdTask(void const * argument)
 void StartDataSensor(void const * argument)
 {
   /* USER CODE BEGIN StartDataSensor */
-//  lcdInit(&hi2c1, (uint8_t)0x27, (uint8_t)4, (uint8_t)20);
-//  lcdDisplayClear();
-//
-//  for(;;)
-//  {
-//	lcdSetCursorPosition(0, 0);
-//	lcdPrintStr((uint8_t*)"Our sensor data:", 16);
-//
-//	lcdSetCursorPosition(0, 1);
-//	lcdPrintStr((uint8_t*) "Humidity = ", 11);
-//
-//	lcdSetCursorPosition(0, 2);
-//	lcdPrintStr((uint8_t*) "Pressure = ", 11);
-//
-//	HAL_Delay(1000);
-//	lcdDisplayClear();
-//
-//    vTaskDelay(100);
-//  }
-//
-//  osThreadTerminate(NULL);
 
 	lcdInit(&hi2c1, (uint8_t)0x27, (uint8_t)4, (uint8_t)20);
-	lcdDisplayClear();
 
 	for(;;) {
 
-		while(!bmp280_read_float(&bmp280, &temperature, &pressure, &humidity)) {
+		lcdDisplayClear();
+
+		while(!bmp280_read_float(&bmp280, &temperature, &pressure, &humidity))
+		{
 			lcdSetCursorPosition(0, 1);
 			lcdPrintStr((uint8_t*) "Read data - failed!", 18);
 			lcdSetCursorPosition(0, 2);
@@ -561,66 +558,57 @@ void StartDataSensor(void const * argument)
 		}
 
 		lcdSetCursorPosition(0, 3);
-				    lcdPrintStr((uint8_t*)"Temp = ", 7);
+		lcdPrintStr((uint8_t*)"Temp = ", 7);
 
-				    // temperature = 22.77
-				    fPart = (int) temperature;
-				    sPart = (temperature - fPart) * 1000;
-				    // pressure
-				    float MMPressure = pressure / 133;
-				    int fPartPressure = (int) MMPressure;
-				    // humidity
-				    int fHumidity = (int) humidity;
+		fPart = (int) temperature;
+		sPart = (temperature - fPart) * 1000;
 
-				    char firstPart[2] = "";
-				    char secondPart[2] = "";
+		MMPressure = pressure / 133;
+		fPartPressure = (int) MMPressure;
 
-				    char PressureStr[] = "";
-				    char HumidityStr[] = "";
+		fHumidity = (int) humidity;
 
-				    itoa(fPart, firstPart, 10);
-				    itoa(sPart, secondPart, 10);
-				    itoa(fPartPressure, PressureStr, 10);
-				    itoa(fHumidity, HumidityStr, 10);
+		itoa(fPart, firstPart, 10);
+		itoa(sPart, secondPart, 10);
+		itoa(fPartPressure, PressureStr, 10);
+		itoa(fHumidity, HumidityStr, 10);
 
-				    lcdSetCursorPosition(0, 0);
-				    lcdPrintStr((uint8_t*)"Our sensor data:", 16);
+		lcdSetCursorPosition(0, 0);
+		lcdPrintStr((uint8_t*)"Sensor data:", 12);
 
-				    lcdSetCursorPosition(0, 1);
-				    lcdPrintStr((uint8_t*) "Humidity = ", 11);
+		lcdSetCursorPosition(0, 1);
+		lcdPrintStr((uint8_t*) "Humidity = ", 11);
 
-				    lcdSetCursorPosition(11, 1);
-				    lcdPrintStr((uint8_t*) HumidityStr, 2);
+		lcdSetCursorPosition(11, 1);
+		lcdPrintStr((uint8_t*) HumidityStr, 2);
 
-				    lcdSetCursorPosition(14, 1);
-				    lcdPrintStr((uint8_t*) "%", 1);
+		lcdSetCursorPosition(14, 1);
+		lcdPrintStr((uint8_t*) "%", 1);
 
-				    lcdSetCursorPosition(0, 2);
-				    lcdPrintStr((uint8_t*) "Pressure = ", 11);
+		lcdSetCursorPosition(0, 2);
+		lcdPrintStr((uint8_t*) "Pressure = ", 11);
 
-				    lcdSetCursorPosition(11, 2);
-				    lcdPrintStr((uint8_t*) PressureStr, 3);
+		lcdSetCursorPosition(11, 2);
+		lcdPrintStr((uint8_t*) PressureStr, 3);
 
-				    lcdSetCursorPosition(15, 2);
-				    lcdPrintStr((uint8_t*) "mmHg", 4);
+		lcdSetCursorPosition(15, 2);
+		lcdPrintStr((uint8_t*) "mmHg", 4);
 
-				    lcdSetCursorPosition(7, 3);
-				    lcdPrintStr((uint8_t*)firstPart, 2);
+		lcdSetCursorPosition(7, 3);
+		lcdPrintStr((uint8_t*)firstPart, 2);
 
-				    lcdSetCursorPosition(9, 3);
-				    lcdPrintStr((uint8_t*)".", 1);
+		lcdSetCursorPosition(9, 3);
+		lcdPrintStr((uint8_t*)".", 1);
 
-				    lcdSetCursorPosition(10, 3);
-				    lcdPrintStr((uint8_t*)secondPart, 2);
+		lcdSetCursorPosition(10, 3);
+		lcdPrintStr((uint8_t*)secondPart, 2);
 
-				    lcdSetCursorPosition(13, 3);
-				    lcdPrintStr((uint8_t*)"Celsius", 7);
+		lcdSetCursorPosition(13, 3);
+		lcdPrintStr((uint8_t*)"Celsius", 7);
 
-				    HAL_Delay(1800);
-				    lcdDisplayClear();
+		HAL_Delay(1800);
 
-				    vTaskDelay(100);
-
+		vTaskDelay(100);
 	}
 
 	osThreadTerminate(NULL);
@@ -638,32 +626,40 @@ void StartDataSensor(void const * argument)
 void StartBtnTask(void const * argument)
 {
   /* USER CODE BEGIN StartBtnTask */
-  /* Infinite loop */
   for(;;)
   {
-    if(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_RESET) {
-    	vTaskDelay(30);
+    if(HAL_GPIO_ReadPin(SensorBtn_GPIO_Port, SensorBtn_Pin) == GPIO_PIN_SET)
+    {
+//    	vTaskDelay(30);
+    	osDelay(100);
 
-    	if(numTask == 3) {
+    	if(numTask == 3)
+    	{
     		numTask = 0;
     	}
 
-    	if(numTask == 0) {
-    		vTaskSuspend(printLcdTaskHandle);
-    		vTaskSuspend(myPrintTimeHandle);
-   		    vTaskResume(checkDataSensorHandle);
+    	if(numTask == 0)
+    	{
+    		osThreadSuspend(printLcdTaskHandle);
+    		osThreadSuspend(myPrintTimeHandle);
+    		lcdDisplayClear();
+    		osThreadResume(checkDataSensorHandle);
    	    	numTask++;
     	}
-    	else if(numTask == 1) {
-    		vTaskSuspend(checkDataSensorHandle);
-    		vTaskSuspend(myPrintTimeHandle);
-    		vTaskResume(printLcdTaskHandle);
+    	else if(numTask == 1)
+    	{
+    		osThreadSuspend(checkDataSensorHandle);
+    		osThreadSuspend(myPrintTimeHandle);
+    		lcdDisplayClear();
+    		osThreadResume(printLcdTaskHandle);
         	numTask++;
     	}
-    	else if(numTask == 2) {
-    		vTaskSuspend(checkDataSensorHandle);
-    		vTaskSuspend(printLcdTaskHandle);
-    		vTaskResume(myPrintTimeHandle);
+    	else if(numTask == 2)
+    	{
+    		osThreadSuspend(checkDataSensorHandle);
+    		osThreadSuspend(printLcdTaskHandle);
+    		lcdDisplayClear();
+    		osThreadResume(myPrintTimeHandle);
         	numTask++;
     	}
     }
@@ -685,10 +681,11 @@ void StartTimeTask(void const * argument)
 {
   /* USER CODE BEGIN StartTimeTask */
   lcdInit(&hi2c1, (uint8_t)0x27, (uint8_t)4, (uint8_t)20);
-  lcdDisplayClear();
 
   for(;;)
   {
+	lcdDisplayClear();
+
 	Get_Time(&hi2c3);
 
 	lcdSetCursorPosition(0, 0);
@@ -705,8 +702,7 @@ void StartTimeTask(void const * argument)
 	lcdSetCursorPosition(6, 2);
 	lcdPrintStr((uint8_t*)buffer, 10);
 
-	HAL_Delay(900);
-	lcdDisplayClear();
+	HAL_Delay(1000);
 
     vTaskDelay(100);
   }
