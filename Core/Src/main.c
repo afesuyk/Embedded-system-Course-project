@@ -27,6 +27,7 @@
 #include "stdbool.h"
 #include "stdio.h"
 #include "lcd_hd44780_i2c.h"
+#include "DS3231.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,6 +61,7 @@ osThreadId myPrintTimeHandle;
 /* USER CODE BEGIN PV */
 bool isPressed = false;
 uint8_t numTask = 0;
+char buffer[15];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -82,59 +84,57 @@ void StartTimeTask(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#define DS3231_ADDRESS 0xD0
-
-uint8_t decToBcd(int val)
-{
-  return (uint8_t)( (val/10*16) + (val%10) );
-}
-
-int bcdToDec(uint8_t val)
-{
-  return (int)( (val/16*10) + (val%16) );
-}
-
-typedef struct {
-	uint8_t seconds;
-	uint8_t minutes;
-	uint8_t hour;
-	uint8_t dayofweek;
-	uint8_t dayofmonth;
-	uint8_t month;
-	uint8_t year;
-} TIME;
-
-TIME time;
 
 
-void Set_Time (uint8_t sec, uint8_t min, uint8_t hour, uint8_t dow, uint8_t dom, uint8_t month, uint8_t year)
-{
-	uint8_t set_time[7];
-	set_time[0] = decToBcd(sec);
-	set_time[1] = decToBcd(min);
-	set_time[2] = decToBcd(hour);
-	set_time[3] = decToBcd(dow);
-	set_time[4] = decToBcd(dom);
-	set_time[5] = decToBcd(month);
-	set_time[6] = decToBcd(year);
-
-	HAL_I2C_Mem_Write(&hi2c3, DS3231_ADDRESS, 0x00, 1, set_time, 7, 1000);
-}
-
-void Get_Time (void)
-{
-	uint8_t get_time[7];
-	HAL_I2C_Mem_Read(&hi2c3, DS3231_ADDRESS, 0x00, 1, get_time, 7, 1000);
-	time.seconds = bcdToDec(get_time[0]);
-	time.minutes = bcdToDec(get_time[1]);
-	time.hour = bcdToDec(get_time[2]);
-	time.dayofweek = bcdToDec(get_time[3]);
-	time.dayofmonth = bcdToDec(get_time[4]);
-	time.month = bcdToDec(get_time[5]);
-	time.year = bcdToDec(get_time[6]);
-}
-
-char buffer[15];
+//uint8_t decToBcd(int val)
+//{
+//  return (uint8_t)( (val/10*16) + (val%10) );
+//}
+//
+//int bcdToDec(uint8_t val)
+//{
+//  return (int)( (val/16*10) + (val%16) );
+//}
+//
+//typedef struct {
+//	uint8_t seconds;
+//	uint8_t minutes;
+//	uint8_t hour;
+//	uint8_t dayofweek;
+//	uint8_t dayofmonth;
+//	uint8_t month;
+//	uint8_t year;
+//} TIME;
+//
+//TIME time;
+//
+//
+//void Set_Time (uint8_t sec, uint8_t min, uint8_t hour, uint8_t dow, uint8_t dom, uint8_t month, uint8_t year)
+//{
+//	uint8_t set_time[7];
+//	set_time[0] = decToBcd(sec);
+//	set_time[1] = decToBcd(min);
+//	set_time[2] = decToBcd(hour);
+//	set_time[3] = decToBcd(dow);
+//	set_time[4] = decToBcd(dom);
+//	set_time[5] = decToBcd(month);
+//	set_time[6] = decToBcd(year);
+//
+//	HAL_I2C_Mem_Write(&hi2c3, DS3231_ADDRESS, 0x00, 1, set_time, 7, 1000);
+//}
+//
+//void Get_Time (void)
+//{
+//	uint8_t get_time[7];
+//	HAL_I2C_Mem_Read(&hi2c3, DS3231_ADDRESS, 0x00, 1, get_time, 7, 1000);
+//	time.seconds = bcdToDec(get_time[0]);
+//	time.minutes = bcdToDec(get_time[1]);
+//	time.hour = bcdToDec(get_time[2]);
+//	time.dayofweek = bcdToDec(get_time[3]);
+//	time.dayofmonth = bcdToDec(get_time[4]);
+//	time.month = bcdToDec(get_time[5]);
+//	time.year = bcdToDec(get_time[6]);
+//}
 /* USER CODE END 0 */
 
 /**
@@ -172,7 +172,10 @@ int main(void)
   MX_I2C2_Init();
   MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
-//  Set_Time(20, 25, 18, 5, 29, 5, 20);
+
+  /* Use if you want to change start time and date */
+  /* Set_Time(20, 27, 16, 6, 30, 5, 20, &hi2c3); */
+
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -482,6 +485,8 @@ void StartDefaultTask(void const * argument)
     HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
     vTaskDelay(1000);
   }
+
+  osThreadTerminate(NULL);
   /* USER CODE END 5 */ 
 }
 
@@ -495,6 +500,37 @@ void StartDefaultTask(void const * argument)
 void StartLcdTask(void const * argument)
 {
   /* USER CODE BEGIN StartLcdTask */
+	lcdInit(&hi2c1, (uint8_t)0x27, (uint8_t)4, (uint8_t)20);
+	lcdDisplayClear();
+
+	for(;;)
+	{
+      lcdSetCursorPosition(0, 0);
+	  lcdPrintStr((uint8_t*)"Have a nice day!", 16);
+
+      lcdSetCursorPosition(0, 1);
+	  lcdPrintStr((uint8_t*)"Just a line...", 14);
+
+	  HAL_Delay(1000);
+	  lcdDisplayClear();
+
+	  vTaskDelay(100);
+	}
+
+	osThreadTerminate(NULL);
+  /* USER CODE END StartLcdTask */
+}
+
+/* USER CODE BEGIN Header_StartDataSensor */
+/**
+* @brief Function implementing the checkDataSensor thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDataSensor */
+void StartDataSensor(void const * argument)
+{
+  /* USER CODE BEGIN StartDataSensor */
   lcdInit(&hi2c1, (uint8_t)0x27, (uint8_t)4, (uint8_t)20);
   lcdDisplayClear();
 
@@ -514,36 +550,8 @@ void StartLcdTask(void const * argument)
 
     vTaskDelay(100);
   }
-  /* USER CODE END StartLcdTask */
-}
 
-/* USER CODE BEGIN Header_StartDataSensor */
-/**
-* @brief Function implementing the checkDataSensor thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartDataSensor */
-void StartDataSensor(void const * argument)
-{
-  /* USER CODE BEGIN StartDataSensor */
-
-  lcdInit(&hi2c1, (uint8_t)0x27, (uint8_t)4, (uint8_t)20);
-  lcdDisplayClear();
-
-  for(;;)
-  {
-	lcdSetCursorPosition(0, 0);
-	lcdPrintStr((uint8_t*)"Have a nice day!", 16);
-
-	lcdSetCursorPosition(0, 1);
-	lcdPrintStr((uint8_t*)"Just a line...", 14);
-
-	HAL_Delay(1000);
-	lcdDisplayClear();
-
-    vTaskDelay(100);
-  }
+  osThreadTerminate(NULL);
   /* USER CODE END StartDataSensor */
 }
 
@@ -588,6 +596,8 @@ void StartBtnTask(void const * argument)
     }
     vTaskDelay(100);
   }
+
+  osThreadTerminate(NULL);
   /* USER CODE END StartBtnTask */
 }
 
@@ -606,7 +616,7 @@ void StartTimeTask(void const * argument)
 
   for(;;)
   {
-	Get_Time();
+	Get_Time(&hi2c3);
 
 	lcdSetCursorPosition(0, 0);
 	lcdPrintStr((uint8_t*)"Your time: ", 11);
@@ -626,6 +636,8 @@ void StartTimeTask(void const * argument)
 	lcdDisplayClear();
 //    vTaskDelay(100);
   }
+
+  osThreadTerminate(NULL);
   /* USER CODE END StartTimeTask */
 }
 

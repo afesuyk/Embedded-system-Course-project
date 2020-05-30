@@ -1,3 +1,4 @@
+"Core/Src/DS3231.o"
 "Core/Src/freertos.o"
 "Core/Src/lcd_hd44780_i2c.o"
 "Core/Src/main.o"
