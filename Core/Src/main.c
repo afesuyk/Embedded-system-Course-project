@@ -24,7 +24,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "math.h"
@@ -65,25 +64,27 @@ osThreadId myStatusTempHandle;
 /* USER CODE BEGIN PV */
 BMP280_HandleTypedef bmp280;
 
-int fPart;
-int sPart;
+int fPartTemp;
+int sPartTemp;
 int fPartPressure;
 int fHumidity;
 int numTask = 0;
-int getDay;
+
 float pressure;
 float temperature;
 float humidity;
 float MMPressure;
+
 char buffer[15];
-char firstPart[] = "";
-char secondPart[] = "";
+char TempFirstPart[] = "";
+char TempSecondPart[] = "";
 char PressureStr[] = "";
 char HumidityStr[] = "";
-bool isPressed = false;
+
 uint8_t Data[256];
 uint8_t bmeStr[] = "BME280";
 uint8_t bmpStr[] = "BMP280";
+
 uint16_t size;
 /* USER CODE END PV */
 
@@ -197,7 +198,6 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-  //vTaskSuspend(printLcdTaskHandle);
   vTaskSuspend(myPrintTimeHandle);
   vTaskSuspend(checkDataSensorHandle);
   /* USER CODE END RTOS_THREADS */
@@ -475,15 +475,7 @@ void initBME280(I2C_HandleTypeDef *i2c) {
 	lcdPrintStr((uint8_t*)"Our sensor is ", 14);
 
 	lcdSetCursorPosition(14, 1);
-
-    if(bme280p)
-    {
-    	lcdPrintStr((uint8_t*) bmeStr, 6);
-    }
-    else
-    {
-    	lcdPrintStr((uint8_t*) bmpStr, 6);
-    }
+	lcdPrintStr((uint8_t*) bme280p ? bmeStr : bmpStr, 6);
 
     HAL_Delay(2000);
     lcdDisplayClear();
@@ -500,8 +492,8 @@ void checkBME280(void) {
 		lcdDisplayClear();
 	}
 
-	fPart = (int) temperature;
-	sPart = (temperature - fPart) * 1000;
+	fPartTemp = (int) temperature;
+	sPartTemp = (temperature - fPartTemp) * 1000;
 
 	MMPressure = pressure / 133;
 	fPartPressure = (int) MMPressure;
@@ -510,8 +502,8 @@ void checkBME280(void) {
 }
 
 void convertData(void) {
-	itoa(fPart, firstPart, 10);
-	itoa(sPart, secondPart, 10);
+	itoa(fPartTemp, TempFirstPart, 10);
+	itoa(sPartTemp, TempSecondPart, 10);
 	itoa(fPartPressure, PressureStr, 10);
 	itoa(fHumidity, HumidityStr, 10);
 }
@@ -557,8 +549,6 @@ void StartLcdTask(void const * argument)
 	  getTime(&hi2c3);
 	  convertData();
 
-	  getDay = time.dayofmonth;
-
 	  lcdDisplayClear();
 
 	  lcdSetCursorPosition(0, 0);
@@ -569,7 +559,7 @@ void StartLcdTask(void const * argument)
 
 	  sprintf(buffer, "%02d", time.dayofmonth);
 	  lcdSetCursorPosition(8, 1);
-	  lcdPrintStr((uint8_t*)buffer, floor(log10(abs(getDay)))+1);
+	  lcdPrintStr((uint8_t*)buffer, floor(log10(abs(time.dayofmonth)))+1);
 
 	  lcdSetCursorPosition(11, 1);
 	  switch(time.month) {
@@ -615,7 +605,7 @@ void StartLcdTask(void const * argument)
 	  lcdPrintStr((uint8_t*) "Temperature: ", 13);
 
 	  lcdSetCursorPosition(13, 2);
-	  lcdPrintStr((uint8_t*) firstPart, 2);
+	  lcdPrintStr((uint8_t*) TempFirstPart, 2);
 
 	  lcdSetCursorPosition(16, 2);
 	  lcdPrintStr((uint8_t*) "C", 1);
@@ -648,8 +638,6 @@ void StartDataSensor(void const * argument)
   /* USER CODE BEGIN StartDataSensor */
   lcdInit(&hi2c1, (uint8_t)0x27, (uint8_t)4, (uint8_t)20);
 
-//  initBME280(&hi2c2);
-
   for(;;) {
 
 	  lcdDisplayClear();
@@ -681,13 +669,13 @@ void StartDataSensor(void const * argument)
 	  lcdPrintStr((uint8_t*)"Temp = ", 7);
 
 	  lcdSetCursorPosition(7, 3);
-	  lcdPrintStr((uint8_t*)firstPart, 2);
+	  lcdPrintStr((uint8_t*)TempFirstPart, 2);
 
 	  lcdSetCursorPosition(9, 3);
 	  lcdPrintStr((uint8_t*)".", 1);
 
 	  lcdSetCursorPosition(10, 3);
-	  lcdPrintStr((uint8_t*)secondPart, 2);
+	  lcdPrintStr((uint8_t*)TempSecondPart, 2);
 
 	  lcdSetCursorPosition(13, 3);
 	  lcdPrintStr((uint8_t*)"Celsius", 7);
@@ -785,8 +773,6 @@ void StartTimeTask(void const * argument)
 	  lcdPrintStr((uint8_t*)buffer, 10);
 
 	  HAL_Delay(1000);
-
-	  vTaskDelay(100);
 	}
 
   osThreadTerminate(NULL);
