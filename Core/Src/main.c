@@ -559,7 +559,7 @@ void StartLcdTask(void const * argument)
 
 	  sprintf(buffer, "%02d", time.dayofmonth);
 	  lcdSetCursorPosition(8, 1);
-	  lcdPrintStr((uint8_t*)buffer, floor(log10(abs(time.dayofmonth)))+1);
+	  lcdPrintStr((uint8_t*)buffer, 2);
 
 	  lcdSetCursorPosition(11, 1);
 	  switch(time.month) {
@@ -668,14 +668,16 @@ void StartDataSensor(void const * argument)
 	  lcdSetCursorPosition(0, 3);
 	  lcdPrintStr((uint8_t*)"Temp = ", 7);
 
+	  sprintf(buffer, "%02d", fPartTemp);
 	  lcdSetCursorPosition(7, 3);
-	  lcdPrintStr((uint8_t*)TempFirstPart, 2);
+	  lcdPrintStr((uint8_t*)buffer, 2);
 
 	  lcdSetCursorPosition(9, 3);
 	  lcdPrintStr((uint8_t*)".", 1);
 
+	  sprintf(buffer, "%02d", sPartTemp);
 	  lcdSetCursorPosition(10, 3);
-	  lcdPrintStr((uint8_t*)TempSecondPart, 2);
+	  lcdPrintStr((uint8_t*)buffer, 2);
 
 	  lcdSetCursorPosition(13, 3);
 	  lcdPrintStr((uint8_t*)"Celsius", 7);
