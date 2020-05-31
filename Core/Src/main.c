@@ -60,6 +60,7 @@ osThreadId printLcdTaskHandle;
 osThreadId checkDataSensorHandle;
 osThreadId myBtnTaskHandle;
 osThreadId myPrintTimeHandle;
+osThreadId myStatusTempHandle;
 /* USER CODE BEGIN PV */
 BMP280_HandleTypedef bmp280;
 
@@ -98,6 +99,7 @@ void StartLcdTask(void const * argument);
 void StartDataSensor(void const * argument);
 void StartBtnTask(void const * argument);
 void StartTimeTask(void const * argument);
+void StartStatusTemp(void const * argument);
 
 /* USER CODE BEGIN PFP */
 void initBME280(I2C_HandleTypeDef *i2c);
@@ -145,7 +147,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   initBME280(&hi2c2);
   /* Use if you want to change start time and date */
-  /* Set_Time(20, 27, 16, 6, 30, 5, 20, &hi2c3); */
+  /* Set_Time(20, 35, 14, 7, 31, 5, 20, &hi2c3); */
 
   /* USER CODE END 2 */
 
@@ -185,6 +187,10 @@ int main(void)
   /* definition and creation of myPrintTime */
   osThreadDef(myPrintTime, StartTimeTask, osPriorityNormal, 0, 128);
   myPrintTimeHandle = osThreadCreate(osThread(myPrintTime), NULL);
+
+  /* definition and creation of myStatusTemp */
+  osThreadDef(myStatusTemp, StartStatusTemp, osPriorityNormal, 0, 128);
+  myStatusTempHandle = osThreadCreate(osThread(myStatusTemp), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -421,7 +427,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, RGB_led1_Pin|RGB_led2_Pin|RGB_led3_Pin|LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -435,12 +441,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(SensorBtn_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
+  /*Configure GPIO pins : RGB_led1_Pin RGB_led2_Pin RGB_led3_Pin LD2_Pin */
+  GPIO_InitStruct.Pin = RGB_led1_Pin|RGB_led2_Pin|RGB_led3_Pin|LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
 
@@ -630,7 +636,6 @@ void StartBtnTask(void const * argument)
   {
     if(HAL_GPIO_ReadPin(SensorBtn_GPIO_Port, SensorBtn_Pin) == GPIO_PIN_SET)
     {
-//    	vTaskDelay(30);
     	osDelay(100);
 
     	if(numTask == 3)
@@ -680,35 +685,72 @@ void StartBtnTask(void const * argument)
 void StartTimeTask(void const * argument)
 {
   /* USER CODE BEGIN StartTimeTask */
-  lcdInit(&hi2c1, (uint8_t)0x27, (uint8_t)4, (uint8_t)20);
+	lcdInit(&hi2c1, (uint8_t)0x27, (uint8_t)4, (uint8_t)20);
 
-  for(;;)
-  {
-	lcdDisplayClear();
+	for(;;)
+	{
+		lcdDisplayClear();
 
-	Get_Time(&hi2c3);
+		Get_Time(&hi2c3);
 
-	lcdSetCursorPosition(0, 0);
-	lcdPrintStr((uint8_t*)"Your time: ", 11);
+		lcdSetCursorPosition(0, 0);
+		lcdPrintStr((uint8_t*)"Your time: ", 11);
 
-	sprintf(buffer, "%02d:%02d:%02d", time.hour, time.minutes, time.seconds);
-	lcdSetCursorPosition(11, 0);
-	lcdPrintStr((uint8_t*)buffer,8);
+		sprintf(buffer, "%02d:%02d:%02d", time.hour, time.minutes, time.seconds);
+		lcdSetCursorPosition(11, 0);
+		lcdPrintStr((uint8_t*)buffer,8);
 
-	lcdSetCursorPosition(0, 2);
-	lcdPrintStr((uint8_t*)"Date: ", 6);
+		lcdSetCursorPosition(0, 2);
+		lcdPrintStr((uint8_t*)"Date: ", 6);
 
-	sprintf(buffer, "%02d-%02d-20%02d", time.dayofmonth, time.month, time.year);
-	lcdSetCursorPosition(6, 2);
-	lcdPrintStr((uint8_t*)buffer, 10);
+		sprintf(buffer, "%02d-%02d-20%02d", time.dayofmonth, time.month, time.year);
+		lcdSetCursorPosition(6, 2);
+		lcdPrintStr((uint8_t*)buffer, 10);
 
-	HAL_Delay(1000);
+		HAL_Delay(1000);
 
-    vTaskDelay(100);
-  }
+		vTaskDelay(100);
+	}
 
   osThreadTerminate(NULL);
   /* USER CODE END StartTimeTask */
+}
+
+/* USER CODE BEGIN Header_StartStatusTemp */
+/**
+* @brief Function implementing the myStatusTemp thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartStatusTemp */
+void StartStatusTemp(void const * argument)
+{
+  /* USER CODE BEGIN StartStatusTemp */
+  /* Infinite loop */
+  for(;;)
+  {
+	  if(temperature >= 18 && temperature < 20)
+	  {
+		  HAL_GPIO_WritePin(GPIOA, RGB_led2_Pin, GPIO_PIN_RESET);
+		  HAL_GPIO_WritePin(GPIOA, RGB_led1_Pin, GPIO_PIN_SET);
+		  HAL_GPIO_WritePin(GPIOA, RGB_led3_Pin, GPIO_PIN_SET);
+	  }
+	  else if(temperature >= 20 && temperature <= 23)
+	  {
+		  HAL_GPIO_WritePin(GPIOA, RGB_led2_Pin, GPIO_PIN_SET);
+		  HAL_GPIO_WritePin(GPIOA, RGB_led1_Pin, GPIO_PIN_RESET);
+		  HAL_GPIO_WritePin(GPIOA, RGB_led3_Pin, GPIO_PIN_RESET);
+	  }
+	  else
+	  {
+		  HAL_GPIO_WritePin(GPIOA, RGB_led2_Pin, GPIO_PIN_RESET);
+		  HAL_GPIO_WritePin(GPIOA, RGB_led1_Pin, GPIO_PIN_SET);
+		  HAL_GPIO_WritePin(GPIOA, RGB_led3_Pin, GPIO_PIN_RESET);
+	  }
+
+      vTaskDelay(1000);
+  }
+  /* USER CODE END StartStatusTemp */
 }
 
 /**
