@@ -20,7 +20,7 @@ TIME time;
 
 uint8_t decToBcd(int val);
 int bcdToDec(uint8_t val);
-void Set_Time (uint8_t sec, uint8_t min, uint8_t hour, uint8_t dow, uint8_t dom, uint8_t month, uint8_t year, I2C_HandleTypeDef *hi2c3);
-void Get_Time (I2C_HandleTypeDef *hi2c3);
+void setTime (uint8_t sec, uint8_t min, uint8_t hour, uint8_t dow, uint8_t dom, uint8_t month, uint8_t year, I2C_HandleTypeDef *hi2c3);
+void getTime (I2C_HandleTypeDef *hi2c3);
 
 #endif /* DS3231_H_ */

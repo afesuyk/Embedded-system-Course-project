@@ -8,7 +8,7 @@ int bcdToDec(uint8_t val) {
   return (int)( (val/16*10) + (val%16) );
 }
 
-void Set_Time (uint8_t sec, uint8_t min, uint8_t hour, uint8_t dow, uint8_t dom, uint8_t month, uint8_t year, I2C_HandleTypeDef *hi2c3) {
+void setTime (uint8_t sec, uint8_t min, uint8_t hour, uint8_t dow, uint8_t dom, uint8_t month, uint8_t year, I2C_HandleTypeDef *hi2c3) {
 	uint8_t set_time[7];
 	set_time[0] = decToBcd(sec);
 	set_time[1] = decToBcd(min);
@@ -20,7 +20,7 @@ void Set_Time (uint8_t sec, uint8_t min, uint8_t hour, uint8_t dow, uint8_t dom,
 	HAL_I2C_Mem_Write(hi2c3, DS3231_ADDRESS, 0x00, 1, set_time, 7, 1000);
 }
 
-void Get_Time (I2C_HandleTypeDef *hi2c3) {
+void getTime (I2C_HandleTypeDef *hi2c3) {
 	uint8_t get_time[7];
 	HAL_I2C_Mem_Read(hi2c3, DS3231_ADDRESS, 0x00, 1, get_time, 7, 1000);
 	time.seconds = bcdToDec(get_time[0]);

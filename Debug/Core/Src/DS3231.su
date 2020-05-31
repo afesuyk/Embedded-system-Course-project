@@ -1,4 +1,4 @@
 DS3231.c:3:9:decToBcd	16	static
 DS3231.c:7:5:bcdToDec	16	static
-DS3231.c:11:6:Set_Time	48	static
-DS3231.c:23:6:Get_Time	40	static
+DS3231.c:11:6:setTime	48	static
+DS3231.c:23:6:getTime	40	static

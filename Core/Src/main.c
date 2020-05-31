@@ -27,6 +27,7 @@
 #include "stdbool.h"
 #include "stdio.h"
 #include "stdlib.h"
+#include "math.h"
 #include "lcd_hd44780_i2c.h"
 #include "DS3231.h"
 #include "bmp280.h"
@@ -68,7 +69,8 @@ int fPart;
 int sPart;
 int fPartPressure;
 int fHumidity;
-int numTask = 1;
+int numTask = 0;
+int getDay;
 float pressure;
 float temperature;
 float humidity;
@@ -148,7 +150,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   /* Use if you want to change start time and date */
-  /* Set_Time(20, 35, 14, 7, 31, 5, 20, &hi2c3); */
+  /* setTime(20, 35, 14, 7, 31, 5, 20, &hi2c3); */
 
   /* USER CODE END 2 */
 
@@ -195,8 +197,9 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-  vTaskSuspend(printLcdTaskHandle);
+  //vTaskSuspend(printLcdTaskHandle);
   vTaskSuspend(myPrintTimeHandle);
+  vTaskSuspend(checkDataSensorHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -230,14 +233,13 @@ void SystemClock_Config(void)
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
   /** Initializes the CPU, AHB and APB busses clocks 
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 16;
-  RCC_OscInitStruct.PLL.PLLN = 336;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 100;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -252,7 +254,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -525,6 +527,7 @@ void convertData(void) {
 void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN 5 */
+
   for(;;)
   {
 	  checkBME280();
@@ -547,17 +550,84 @@ void StartLcdTask(void const * argument)
   /* USER CODE BEGIN StartLcdTask */
   lcdInit(&hi2c1, (uint8_t)0x27, (uint8_t)4, (uint8_t)20);
 
+  initBME280(&hi2c2);
+
   for(;;)
   {
+	  getTime(&hi2c3);
+	  convertData();
+
+	  getDay = time.dayofmonth;
+
 	  lcdDisplayClear();
 
-      lcdSetCursorPosition(0, 0);
-	  lcdPrintStr((uint8_t*)"Have a nice day!", 16);
+	  lcdSetCursorPosition(0, 0);
+	  lcdPrintStr((uint8_t*) "Hello, dear user!" , 17);
 
-      lcdSetCursorPosition(0, 1);
-	  lcdPrintStr((uint8_t*)"Just a line...", 14);
+	  lcdSetCursorPosition(0, 1);
+	  lcdPrintStr((uint8_t*) "Today's ", 8);
 
-	  HAL_Delay(1000);
+	  sprintf(buffer, "%02d", time.dayofmonth);
+	  lcdSetCursorPosition(8, 1);
+	  lcdPrintStr((uint8_t*)buffer, floor(log10(abs(getDay)))+1);
+
+	  lcdSetCursorPosition(11, 1);
+	  switch(time.month) {
+	  case 1:
+		  lcdPrintStr((uint8_t*) "January", 7);
+		  break;
+	  case 2:
+		  lcdPrintStr((uint8_t*) "February", 8);
+		  break;
+	  case 3:
+		  lcdPrintStr((uint8_t*) "March", 5);
+		  break;
+	  case 4:
+		  lcdPrintStr((uint8_t*) "April", 5);
+		  break;
+	  case 5:
+		  lcdPrintStr((uint8_t*) "May", 3);
+		  break;
+	  case 6:
+		  lcdPrintStr((uint8_t*) "June", 4);
+		  break;
+	  case 7:
+		  lcdPrintStr((uint8_t*) "July", 4);
+		  break;
+	  case 8:
+		  lcdPrintStr((uint8_t*) "August", 6);
+		  break;
+	  case 9:
+		  lcdPrintStr((uint8_t*) "September", 9);
+		  break;
+	  case 10:
+		  lcdPrintStr((uint8_t*) "October", 7);
+		  break;
+	  case 11:
+		  lcdPrintStr((uint8_t*) "November", 8);
+		  break;
+	  case 12:
+		  lcdPrintStr((uint8_t*) "December", 8);
+		  break;
+	  }
+
+	  lcdSetCursorPosition(0, 2);
+	  lcdPrintStr((uint8_t*) "Temperature: ", 13);
+
+	  lcdSetCursorPosition(13, 2);
+	  lcdPrintStr((uint8_t*) firstPart, 2);
+
+	  lcdSetCursorPosition(16, 2);
+	  lcdPrintStr((uint8_t*) "C", 1);
+
+	  lcdSetCursorPosition(0, 3);
+	  lcdPrintStr((uint8_t*) "Time: ", 6);
+
+	  sprintf(buffer, "%02d:%02d", time.hour, time.minutes);
+	  lcdSetCursorPosition(6, 3);
+	  lcdPrintStr((uint8_t*)buffer, 5);
+
+	  HAL_Delay(2000);
 
 	  vTaskDelay(100);
   }
@@ -578,7 +648,7 @@ void StartDataSensor(void const * argument)
   /* USER CODE BEGIN StartDataSensor */
   lcdInit(&hi2c1, (uint8_t)0x27, (uint8_t)4, (uint8_t)20);
 
-  initBME280(&hi2c2);
+//  initBME280(&hi2c2);
 
   for(;;) {
 
@@ -622,9 +692,7 @@ void StartDataSensor(void const * argument)
 	  lcdSetCursorPosition(13, 3);
 	  lcdPrintStr((uint8_t*)"Celsius", 7);
 
-	  HAL_Delay(1800);
-
-	  vTaskDelay(100);
+	  osDelay(1000);
   }
 
   osThreadTerminate(NULL);
@@ -652,32 +720,33 @@ void StartBtnTask(void const * argument)
 			  numTask = 0;
 		  }
 
+
 		  if(numTask == 0)
 		  {
-			  osThreadSuspend(printLcdTaskHandle);
-			  osThreadSuspend(myPrintTimeHandle);
-			  lcdDisplayClear();
-			  osThreadResume(checkDataSensorHandle);
-			  numTask++;
+			osThreadSuspend(printLcdTaskHandle);
+			osThreadSuspend(myPrintTimeHandle);
+			lcdDisplayClear();
+			osThreadResume(checkDataSensorHandle);
+			numTask++;
 		  }
 		  else if(numTask == 1)
 		  {
-			  osThreadSuspend(checkDataSensorHandle);
-			  osThreadSuspend(myPrintTimeHandle);
-			  lcdDisplayClear();
-			  osThreadResume(printLcdTaskHandle);
-			  numTask++;
+			osThreadSuspend(checkDataSensorHandle);
+			osThreadSuspend(printLcdTaskHandle);
+			lcdDisplayClear();
+			osThreadResume(myPrintTimeHandle);
+			numTask++;
 		  }
 		  else if(numTask == 2)
 		  {
-			  osThreadSuspend(checkDataSensorHandle);
-			  osThreadSuspend(printLcdTaskHandle);
-			  lcdDisplayClear();
-			  osThreadResume(myPrintTimeHandle);
-			  numTask++;
+			osThreadSuspend(checkDataSensorHandle);
+			osThreadSuspend(myPrintTimeHandle);
+			lcdDisplayClear();
+			osThreadResume(printLcdTaskHandle);
+			numTask++;
 		  }
 	  }
-	  vTaskDelay(100);
+	  osDelay(100);
   }
   osThreadTerminate(NULL);
   /* USER CODE END StartBtnTask */
@@ -699,7 +768,7 @@ void StartTimeTask(void const * argument)
   {
 	  lcdDisplayClear();
 
-	  Get_Time(&hi2c3);
+	  getTime(&hi2c3);
 
 	  lcdSetCursorPosition(0, 0);
 	  lcdPrintStr((uint8_t*)"Your time: ", 11);
@@ -715,7 +784,9 @@ void StartTimeTask(void const * argument)
 	  lcdSetCursorPosition(6, 2);
 	  lcdPrintStr((uint8_t*)buffer, 10);
 
-	  osDelay(1000);
+	  HAL_Delay(1000);
+
+	  vTaskDelay(100);
 	}
 
   osThreadTerminate(NULL);
@@ -734,13 +805,13 @@ void StartStatusTemp(void const * argument)
   /* USER CODE BEGIN StartStatusTemp */
   for(;;)
   {
-	  if(temperature >= 18 && temperature < 20)
+	  if(temperature >= 18 && temperature <= 20)
 	  {
 		  HAL_GPIO_WritePin(GPIOA, RGB_led2_Pin, GPIO_PIN_RESET);
 		  HAL_GPIO_WritePin(GPIOA, RGB_led1_Pin, GPIO_PIN_SET);
 		  HAL_GPIO_WritePin(GPIOA, RGB_led3_Pin, GPIO_PIN_SET);
 	  }
-	  else if(temperature >= 20 && temperature <= 23)
+	  else if(temperature >= 21 && temperature <= 24)
 	  {
 		  HAL_GPIO_WritePin(GPIOA, RGB_led2_Pin, GPIO_PIN_SET);
 		  HAL_GPIO_WritePin(GPIOA, RGB_led1_Pin, GPIO_PIN_RESET);
